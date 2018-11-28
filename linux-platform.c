@@ -126,25 +126,9 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
     fprintf(stderr, "GL DEBUG NOTIFICATION\nSOURCE: %s TYPE: %s, SEVERITY: %s, ID: %" PRIi32 "\n%s\n\n",
             srcStr, typeStr, severityStr, id, message);
 }
-
-local Vertex vertices[] = {
-    {{.5, .5, .5}, {1, 0, 0}},
-    {{-.5, .5, .5}, {0, 1, 0}},
-    {{.5, -.5, .5}, {0, 0, 1}},
-    {{.5, -.5, .5}, {0, 0, 1}},
-    {{-.5, .5, .5}, {0, 1, 0}},
-    {{-.5, -.5, .5}, {1, 1, 1}},
-    {{.5, .5, 0}, {1, 0, 0}},
-    {{-.5, .5, 0}, {0, 1, 0}},
-    {{.5, -.5, 0}, {0, 0, 1}},
-    {{.5, -.5, 0}, {0, 0, 1}},
-    {{-.5, .5, 0}, {0, 1, 0}},
-    {{-.5, -.5, 0}, {1, 1, 1}}};
-
-void SDLSetProperViewport(SDL_Window *win)
+void SetProperViewport(ifast32 w, ifast32 h)
 {
-    int w, h;
-    SDL_GetWindowSize(win, &w, &h);
+
     f32 aspectRatio = (f32)w / (f32)h;
     f32 gameAspectRatio = 16.0f / 9.0f;
 
@@ -175,6 +159,26 @@ void SDLSetProperViewport(SDL_Window *win)
     }
 }
 
+void SDLResizeWindow(SDL_Window *win, ileast32 w, ileast32 h)
+{
+    SDL_SetWindowSize(win, w, h);
+    SetProperViewport(w, h);
+}
+
+local Vertex vertices[] = {
+    {{.5, .5, .5}, {1, 0, 0}},
+    {{-.5, .5, .5}, {0, 1, 0}},
+    {{.5, -.5, .5}, {0, 0, 1}},
+    {{.5, -.5, .5}, {0, 0, 1}},
+    {{-.5, .5, .5}, {0, 1, 0}},
+    {{-.5, -.5, .5}, {1, 1, 1}},
+    {{.5, .5, 0}, {1, 0, 0}},
+    {{-.5, .5, 0}, {0, 1, 0}},
+    {{.5, -.5, 0}, {0, 0, 1}},
+    {{.5, -.5, 0}, {0, 0, 1}},
+    {{-.5, .5, 0}, {0, 1, 0}},
+    {{-.5, -.5, 0}, {1, 1, 1}}};
+
 int main(int argc, char **argv)
 {
     ignore argc;
@@ -192,7 +196,7 @@ int main(int argc, char **argv)
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16);
 
-    SDL_Window *win = SDL_CreateWindow("Title", 0, 0, WIDTH, HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    SDL_Window *win = SDL_CreateWindow("Title", 0, 0, WIDTH, HEIGHT, SDL_WINDOW_OPENGL);
 
     SDL_GLContext *c = SDL_GL_CreateContext(win);
 
@@ -225,15 +229,19 @@ int main(int argc, char **argv)
     glEnableVertexAttribArray(1);
 
     Mat4f proj = CreatePerspectiveMat4f(DegToRad(45), 16.0 / 9.0, .1, 10);
-    Mat4f view = CalcLookAtMat4f(vec3f(.5, .5, .5), vec3f(0, 0, 0), vec3f(0, 0, 1));
+    Mat4f view = CalcLookAtMat4f(vec3f(2, 2, 2), vec3f(0, 0, 0), vec3f(0, 0, 1));
 
     ShaderProg s = CreateShaderProg(VERT_SHADER_PATH, FRAG_SHADER_PATH);
 
     UseShaderProg(s);
     SetUniformMat4fShaderProg(s, "proj", &proj);
     SetUniformMat4fShaderProg(s, "view", &view);
+    {
+        int w, h;
+        SDL_GetWindowSize(win, &w, &h);
 
-    SDLSetProperViewport(win);
+        SetProperViewport(w, h);
+    }
 
     glEnable(GL_MULTISAMPLE);
     glEnable(GL_DEPTH_TEST);
@@ -270,8 +278,23 @@ int main(int argc, char **argv)
                 SDL_WindowEvent we = e.window;
                 if (we.event == SDL_WINDOWEVENT_RESIZED)
                 {
-                    printf("Window resized to %dx%d\n", we.data1, we.data2);
-                    SDLSetProperViewport(win);
+                    SetProperViewport(we.data1, we.data2);
+                }
+                break;
+            }
+            case SDL_KEYDOWN:
+            {
+                SDL_KeyboardEvent k = e.key;
+                if (!k.repeat)
+                {
+                    if (k.keysym.scancode == SDL_SCANCODE_F1)
+                    {
+                        SDLResizeWindow(win, 1136, 630);
+                    }
+                    else if (k.keysym.scancode == SDL_SCANCODE_F2)
+                    {
+                        SDLResizeWindow(win, 1280, 720);
+                    }
                 }
                 break;
             }
