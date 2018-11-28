@@ -1,3 +1,4 @@
+#define _DEFAULT_SOURCE
 #include "glad.h"
 #include "rgl.h"
 #include "rutils/debug.h"
@@ -5,9 +6,15 @@
 #include <SDL.h>
 #include <float.h>
 #include <math.h>
+#include <sys/mman.h>
 
 #define WIDTH 1280
 #define HEIGHT 720
+
+#define KILOBYTE (1024)
+#define MEGABYTE (KILOBYTE * 1024)
+
+#define MEMSIZE (512 * MEGABYTE)
 
 #define VERT_SHADER_PATH "shaders/basic-render.vert"
 #define FRAG_SHADER_PATH "shaders/basic-render.frag"
@@ -18,8 +25,8 @@ typedef struct Vertex
     Vec3f c;
 } Vertex;
 
-void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
-                   GLsizei len, const GLchar *message, void *userParam)
+local void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
+                         GLsizei len, const GLchar *message, void *userParam)
 {
     ignore userParam;
     ignore len;
@@ -126,7 +133,8 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
     fprintf(stderr, "GL DEBUG NOTIFICATION\nSOURCE: %s TYPE: %s, SEVERITY: %s, ID: %" PRIi32 "\n%s\n\n",
             srcStr, typeStr, severityStr, id, message);
 }
-void SetProperViewport(ifast32 w, ifast32 h)
+
+local void SetProperViewport(ifast32 w, ifast32 h)
 {
 
     f32 aspectRatio = (f32)w / (f32)h;
@@ -159,7 +167,7 @@ void SetProperViewport(ifast32 w, ifast32 h)
     }
 }
 
-void SDLResizeWindow(SDL_Window *win, ileast32 w, ileast32 h)
+local void SDLResizeWindow(SDL_Window *win, ileast32 w, ileast32 h)
 {
     SDL_SetWindowSize(win, w, h);
     SetProperViewport(w, h);
@@ -183,6 +191,8 @@ int main(int argc, char **argv)
 {
     ignore argc;
     ignore argv;
+
+    void *gameMem = mmap(NULL, MEMSIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
 
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -327,6 +337,7 @@ int main(int argc, char **argv)
     glDeleteVertexArrays(1, &vertexArrayObject);
 
     glDeleteBuffers(1, &vertexBuffer);
+    munmap(gameMem, MEMSIZE);
 
     SDL_GL_DeleteContext(c);
 
