@@ -3,6 +3,8 @@
 #include "rutils/debug.h"
 #include "rutils/def.h"
 #include <SDL.h>
+#include <float.h>
+#include <math.h>
 
 #define WIDTH 1280
 #define HEIGHT 720
@@ -121,8 +123,8 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
         break;
     }
     }
-    printf("DEBUG NOTIFICATION\nSOURCE: %s TYPE: %s, SEVERITY: %s, ID: %" PRIi32 "\n%s\n\n",
-           srcStr, typeStr, severityStr, id, message);
+    fprintf(stderr, "GL DEBUG NOTIFICATION\nSOURCE: %s TYPE: %s, SEVERITY: %s, ID: %" PRIi32 "\n%s\n\n",
+            srcStr, typeStr, severityStr, id, message);
 }
 
 local Vertex vertices[] = {
@@ -137,16 +139,40 @@ local Vertex vertices[] = {
     {{.5, -.5, 0}, {0, 0, 1}},
     {{.5, -.5, 0}, {0, 0, 1}},
     {{-.5, .5, 0}, {0, 1, 0}},
-    {{-.5, -.5, 0}, {1, 1, 1}}
+    {{-.5, -.5, 0}, {1, 1, 1}}};
 
-};
-
-f32 SDLGetAspectRatio(SDL_Window *win)
+void SDLSetProperViewport(SDL_Window *win)
 {
-    int width, height;
-    SDL_GetWindowSize(win, &width, &height);
+    int w, h;
+    SDL_GetWindowSize(win, &w, &h);
+    f32 aspectRatio = (f32)w / (f32)h;
+    f32 gameAspectRatio = 16.0f / 9.0f;
 
-    return (f32)width / (f32)height;
+    if (F32Eq(aspectRatio, gameAspectRatio, FLT_EPSILON))
+    {
+        glViewport(0, 0, w, h);
+    }
+    else
+    {
+        ifast32 properX = 0;
+        ifast32 properY = 0;
+        ifast32 properWidth = w;
+        ifast32 properHeight = h;
+        if (F32Cmp(aspectRatio, gameAspectRatio, FLT_EPSILON) > 0)
+        {
+            //TOO WIDE
+            properWidth = rintf(gameAspectRatio * (f32)h);
+
+            properX = (w - properWidth) / 2;
+        }
+        else
+        {
+            //TOO TALL
+            properHeight = rintf((f32)w / gameAspectRatio);
+            properY = (h - properHeight) / 2;
+        }
+        glViewport(properX, properY, properWidth, properHeight);
+    }
 }
 
 int main(int argc, char **argv)
@@ -166,7 +192,7 @@ int main(int argc, char **argv)
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16);
 
-    SDL_Window *win = SDL_CreateWindow("Title", 0, 0, WIDTH, HEIGHT, SDL_WINDOW_OPENGL);
+    SDL_Window *win = SDL_CreateWindow("Title", 0, 0, WIDTH, HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
     SDL_GLContext *c = SDL_GL_CreateContext(win);
 
@@ -198,14 +224,16 @@ int main(int argc, char **argv)
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, c));
     glEnableVertexAttribArray(1);
 
-    Mat4f proj = CreatePerspectiveMat4f(DegToRad(45), SDLGetAspectRatio(win), .1, 10);
-    Mat4f view = CalcLookAtMat4f(vec3f(2, 2, 2), vec3f(0, 0, 0), vec3f(0, 0, 1));
+    Mat4f proj = CreatePerspectiveMat4f(DegToRad(45), 16.0 / 9.0, .1, 10);
+    Mat4f view = CalcLookAtMat4f(vec3f(.5, .5, .5), vec3f(0, 0, 0), vec3f(0, 0, 1));
 
     ShaderProg s = CreateShaderProg(VERT_SHADER_PATH, FRAG_SHADER_PATH);
 
     UseShaderProg(s);
     SetUniformMat4fShaderProg(s, "proj", &proj);
     SetUniformMat4fShaderProg(s, "view", &view);
+
+    SDLSetProperViewport(win);
 
     glEnable(GL_MULTISAMPLE);
     glEnable(GL_DEPTH_TEST);
@@ -235,6 +263,16 @@ int main(int argc, char **argv)
             case SDL_QUIT:
             {
                 running = false;
+                break;
+            }
+            case SDL_WINDOWEVENT:
+            {
+                SDL_WindowEvent we = e.window;
+                if (we.event == SDL_WINDOWEVENT_RESIZED)
+                {
+                    printf("Window resized to %dx%d\n", we.data1, we.data2);
+                    SDLSetProperViewport(win);
+                }
                 break;
             }
             default:
