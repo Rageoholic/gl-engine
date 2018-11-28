@@ -28,15 +28,7 @@ ifeq ($(mode),debugopt)
 	OPTFLAGS += -O2 -g
 endif
 
-
-
-
-
 -include $(DEPS)
-
-
-
-
 
 %.o: %.cpp
 	$(CXX) -c $< -o $@ $(CCFLAGS)

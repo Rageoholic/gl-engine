@@ -16,6 +16,115 @@ typedef struct Vertex
     Vec3f c;
 } Vertex;
 
+void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
+                   GLsizei len, const GLchar *message, void *userParam)
+{
+    ignore userParam;
+    ignore len;
+
+    const char *srcStr;
+    switch (source)
+    {
+    case GL_DEBUG_SOURCE_API:
+    {
+        srcStr = "API";
+        break;
+    }
+    case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
+    {
+        srcStr = "WINDOW SYSTEM";
+        break;
+    }
+    case GL_DEBUG_SOURCE_APPLICATION:
+    {
+        srcStr = "APP";
+        break;
+    }
+    case GL_DEBUG_SOURCE_SHADER_COMPILER:
+    {
+        srcStr = "SHADER COMPILER";
+        break;
+    }
+    case GL_DEBUG_SOURCE_THIRD_PARTY:
+    {
+        srcStr = "THIRD PARTY";
+        break;
+    }
+    case GL_DEBUG_SOURCE_OTHER:
+    {
+        srcStr = "OTHER";
+        break;
+    }
+    }
+
+    const char *typeStr;
+    switch (type)
+    {
+    case GL_DEBUG_TYPE_ERROR:
+    {
+        typeStr = "ERROR";
+        break;
+    }
+    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+    {
+        typeStr = "DEPRECATED BEHAVIOR";
+        break;
+    }
+    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+    {
+        typeStr = "UNDEFINED BEHAVIOR";
+        break;
+    }
+    case GL_DEBUG_TYPE_PORTABILITY:
+    {
+        typeStr = "PORTABILITY";
+        break;
+    }
+    case GL_DEBUG_TYPE_PERFORMANCE:
+    {
+        typeStr = "PERFORMANCE";
+        break;
+    }
+    case GL_DEBUG_TYPE_MARKER:
+    {
+        typeStr = "MARKER";
+        break;
+    }
+    case GL_DEBUG_TYPE_OTHER:
+    {
+        typeStr = "OTHER";
+        break;
+    }
+    }
+
+    const char *severityStr;
+    switch (severity)
+    {
+    case GL_DEBUG_SEVERITY_NOTIFICATION:
+    {
+        severityStr = "NOTIFICATION";
+        break;
+    }
+    case GL_DEBUG_SEVERITY_LOW:
+    {
+        severityStr = "LOW";
+        break;
+    }
+    case GL_DEBUG_SEVERITY_MEDIUM:
+    {
+        severityStr = "MEDIUM";
+        break;
+    }
+    case GL_DEBUG_SEVERITY_HIGH:
+    {
+        severityStr = "HIGH";
+        break;
+    }
+    }
+    printf("DEBUG NOTIFICATION\nSOURCE: %s TYPE: %s, SEVERITY: %s, ID: %" PRIi32 "\n%s\n\n",
+           srcStr, typeStr, severityStr, id, message);
+}
+
 local Vertex vertices[] = {
     {{.5, .5, .5}, {1, 0, 0}},
     {{-.5, .5, .5}, {0, 1, 0}},
@@ -72,15 +181,15 @@ int main(int argc, char **argv)
 
     u32 vertexBuffer;
 
-    glGenBuffers(1, &vertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glCreateBuffers(1, &vertexBuffer);
+
+    glNamedBufferData(vertexBuffer, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     GLuint vertexArrayObject;
     glGenVertexArrays(1, &vertexArrayObject);
 
     glBindVertexArray(vertexArrayObject);
-
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
     /* Vertex position in worldspace */
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, pos));
     glEnableVertexAttribArray(0);
@@ -90,7 +199,7 @@ int main(int argc, char **argv)
     glEnableVertexAttribArray(1);
 
     Mat4f proj = CreatePerspectiveMat4f(DegToRad(45), SDLGetAspectRatio(win), .1, 10);
-    Mat4f view = CalcLookAtMat4f(vec3f(3, 3, 3), vec3f(0, 0, 0), vec3f(0, 0, 1));
+    Mat4f view = CalcLookAtMat4f(vec3f(2, 2, 2), vec3f(0, 0, 0), vec3f(0, 0, 1));
 
     ShaderProg s = CreateShaderProg(VERT_SHADER_PATH, FRAG_SHADER_PATH);
 
@@ -100,6 +209,11 @@ int main(int argc, char **argv)
 
     glEnable(GL_MULTISAMPLE);
     glEnable(GL_DEPTH_TEST);
+
+#if defined(DEBUG) && !defined(NO_DEBUG_OUTPUT)
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback((GLDEBUGPROC)DebugCallback, NULL);
+#endif
 
     glClearColor(.1, .1, .1, 1);
 
@@ -130,7 +244,7 @@ int main(int argc, char **argv)
             }
         }
         /* update */
-        Mat4f model = RotateMat4f(&IdMat4f, totalTime * DegToRad(20), vec3f(0, 0, 1));
+        Mat4f model = RotateMat4f(&IdMat4f, totalTime * DegToRad(90), vec3f(0, 0, 1));
 
         /* Render */
         {
