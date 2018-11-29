@@ -8,12 +8,13 @@ extern "C"
 {
 #endif
 
-    typedef struct ColorRGB3f
+    typedef struct ColorRGB3f32
     {
         f32 r;
         f32 g;
         f32 b;
-    } ColorRGB3f;
+    } ColorRGB3f32;
+
     typedef struct
     {
         GLuint _id;

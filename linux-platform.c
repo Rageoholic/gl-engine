@@ -229,14 +229,17 @@ int main(int argc, char **argv)
     glGenVertexArrays(1, &vertexArrayObject);
 
     glBindVertexArray(vertexArrayObject);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    glBindVertexBuffer(0, vertexBuffer, 0, sizeof(Vertex));
     /* Vertex position in worldspace */
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, pos));
+    glVertexAttribFormat(0, 3, GL_FLOAT, GL_FALSE, offsetof(Vertex, pos));
     glEnableVertexAttribArray(0);
 
     /* Vertex color */
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, c));
+    glVertexAttribFormat(1, 3, GL_FLOAT, GL_FALSE, offsetof(Vertex, c));
     glEnableVertexAttribArray(1);
+
+    glVertexAttribBinding(0, 0);
+    glVertexAttribBinding(1, 0);
 
     Mat4f proj = CreatePerspectiveMat4f(DegToRad(45), 16.0 / 9.0, .1, 10);
     Mat4f view = CalcLookAtMat4f(vec3f(2, 2, 2), vec3f(0, 0, 0), vec3f(0, 0, 1));
@@ -264,6 +267,7 @@ int main(int argc, char **argv)
     glClearColor(.1, .1, .1, 1);
 
     bool running = true;
+
     f32 totalTime = 0;
     ufast32 lastTime = SDL_GetTicks();
 
@@ -314,8 +318,40 @@ int main(int argc, char **argv)
             }
             }
         }
+        int windowWidth, windowHeight;
+        SDL_GetWindowSize(win, &windowWidth, &windowHeight);
+
+        /* Mouse calculations */
+        int windowX, windowY;
+        SDL_GetWindowPosition(win, &windowX, &windowY);
+
+        int absoluteMouseX, absoluteMouseY;
+        ufast32 mouseState = SDL_GetGlobalMouseState(&absoluteMouseX, &absoluteMouseY);
+        ufast32 mouseLeft = SDL_BUTTON(1) & mouseState;
+        ufast32 mouseRight = SDL_BUTTON(3) & mouseState;
+        ufast32 mouseMid = SDL_BUTTON(2) & mouseState;
+
+        ifast32 relativeMouseX = absoluteMouseX - windowX;
+        ifast32 relativeMouseY = absoluteMouseY - windowY;
         /* update */
         Mat4f model = RotateMat4f(&IdMat4f, totalTime * DegToRad(90), vec3f(0, 0, 1));
+
+        if (mouseLeft)
+        {
+            glClearColor(1, 0, 0, 1);
+        }
+        else if (mouseRight)
+        {
+            glClearColor(0, 1, 0, 1);
+        }
+        else if (mouseMid)
+        {
+            glClearColor(0, 0, 1, 1);
+        }
+        else
+        {
+            glClearColor(.1, .1, .1, 1);
+        }
 
         /* Render */
         {
@@ -337,11 +373,11 @@ int main(int argc, char **argv)
     glDeleteVertexArrays(1, &vertexArrayObject);
 
     glDeleteBuffers(1, &vertexBuffer);
-    munmap(gameMem, MEMSIZE);
 
     SDL_GL_DeleteContext(c);
 
     SDL_DestroyWindow(win);
+    munmap(gameMem, MEMSIZE);
 
     SDL_Quit();
 }
