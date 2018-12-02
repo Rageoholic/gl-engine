@@ -192,7 +192,12 @@ int main(int argc, char **argv)
     ignore argc;
     ignore argv;
 
-    void *gameMem = mmap(NULL, MEMSIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS, -1, 0);
+    void *gameMem = mmap(NULL, MEMSIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+    if (gameMem == (void *)-1)
+    {
+        puts("Could not allocate memory");
+    }
 
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -304,13 +309,26 @@ int main(int argc, char **argv)
                     if (k.keysym.scancode == SDL_SCANCODE_F1)
                     {
                         SDLResizeWindow(win, 1136, 630);
+                        puts("F1");
                     }
                     else if (k.keysym.scancode == SDL_SCANCODE_F2)
                     {
                         SDLResizeWindow(win, 1280, 720);
                     }
+                    else if (k.keysym.scancode == SDL_SCANCODE_ESCAPE)
+                    {
+                        running = false;
+                    }
                 }
                 break;
+            }
+
+            case SDL_KEYUP:
+            {
+                if (e.key.keysym.scancode == SDL_SCANCODE_F1)
+                {
+                    puts("F1 release");
+                }
             }
             default:
             {

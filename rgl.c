@@ -32,7 +32,7 @@ ShaderProg CreateShaderProg(char *vertShaderPath, char *fragShaderPath)
     GLuint vertShader = glCreateShader(GL_VERTEX_SHADER);
     {
 
-        ssize_t vertShaderSourceSize;
+        isize vertShaderSourceSize;
         char *vertShaderSource = MapFileToROBuffer(vertShaderPath, NULL, &vertShaderSourceSize);
 
         glShaderSource(vertShader, 1, (const char **)&vertShaderSource, NULL);
@@ -50,8 +50,7 @@ ShaderProg CreateShaderProg(char *vertShaderPath, char *fragShaderPath)
     }
     GLuint fragShader = glCreateShader(GL_FRAGMENT_SHADER);
     {
-
-        ssize_t fragShaderSourceSize;
+        isize fragShaderSourceSize;
         char *fragShaderSource = MapFileToROBuffer(fragShaderPath, NULL, &fragShaderSourceSize);
 
         glShaderSource(fragShader, 1, (const char **)&fragShaderSource, NULL);
