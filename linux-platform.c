@@ -1,11 +1,9 @@
-#define _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE //MAP_ANONYMOUS
 #include "glad.h"
 #include "rgl.h"
 #include "rutils/debug.h"
 #include "rutils/def.h"
 #include <SDL.h>
-#include <float.h>
-#include <math.h>
 #include <sys/mman.h>
 
 #define WIDTH 1280
@@ -192,11 +190,18 @@ int main(int argc, char **argv)
     ignore argc;
     ignore argv;
 
-    void *gameMem = mmap(NULL, MEMSIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+#if defined(DEBUG) && !defined(NO_FIXED_MEM_LOCATION)
+    void *memloc = (void *)0x400000;
+#else
+    void *memloc = NULL;
+#endif
+
+    void *gameMem = mmap(memloc, MEMSIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
     if (gameMem == (void *)-1)
     {
         puts("Could not allocate memory");
+        return 1;
     }
 
     SDL_Init(SDL_INIT_VIDEO);
@@ -211,7 +216,12 @@ int main(int argc, char **argv)
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 16);
 
-    SDL_Window *win = SDL_CreateWindow("Title", 0, 0, WIDTH, HEIGHT, SDL_WINDOW_OPENGL);
+    u32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN;
+#if defined(RESIZABLE_WINDOW)
+    flags |= SDL_WINDOW_RESIZABLE;
+#endif
+
+    SDL_Window *win = SDL_CreateWindow("Title", 0, 0, WIDTH, HEIGHT, flags);
 
     SDL_GLContext *c = SDL_GL_CreateContext(win);
 
@@ -276,6 +286,8 @@ int main(int argc, char **argv)
     f32 totalTime = 0;
     ufast32 lastTime = SDL_GetTicks();
 
+    SDL_ShowWindow(win);
+
     while (running)
     {
         /* Input and housekeeping */
@@ -319,6 +331,20 @@ int main(int argc, char **argv)
                     {
                         running = false;
                     }
+                    else if (k.keysym.scancode == SDL_SCANCODE_F)
+                    {
+                        SDL_SetWindowFullscreen(win, SDL_WINDOW_FULLSCREEN_DESKTOP);
+                        int w, h;
+                        SDL_GetWindowSize(win, &w, &h);
+                        SetProperViewport(w, h);
+                    }
+                    else if (k.keysym.scancode == SDL_SCANCODE_D)
+                    {
+                        SDL_SetWindowFullscreen(win, 0);
+                        int w, h;
+                        SDL_GetWindowSize(win, &w, &h);
+                        SetProperViewport(w, h);
+                    }
                 }
                 break;
             }
@@ -351,6 +377,9 @@ int main(int argc, char **argv)
 
         ifast32 relativeMouseX = absoluteMouseX - windowX;
         ifast32 relativeMouseY = absoluteMouseY - windowY;
+
+        ignore relativeMouseX;
+        ignore relativeMouseY;
         /* update */
         Mat4f model = RotateMat4f(&IdMat4f, totalTime * DegToRad(90), vec3f(0, 0, 1));
 
@@ -387,6 +416,7 @@ int main(int argc, char **argv)
         SDL_GL_SwapWindow(win);
         lastTime = startTime;
     }
+    SDL_HideWindow(win);
 
     glDeleteVertexArrays(1, &vertexArrayObject);
 
@@ -395,6 +425,7 @@ int main(int argc, char **argv)
     SDL_GL_DeleteContext(c);
 
     SDL_DestroyWindow(win);
+
     munmap(gameMem, MEMSIZE);
 
     SDL_Quit();
